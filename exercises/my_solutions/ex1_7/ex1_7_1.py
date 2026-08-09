@@ -42,3 +42,18 @@ for label in range(1, n_labels):  # label 0 is always the background, skip it
     cv2.circle(annotated, (int(cx), int(cy)), 8, (0, 0, 255), -1)
 
 cv2.imwrite('exercises/my_solutions/ex1_7/annotated.png', annotated)
+
+
+annotated2 = annotated.copy()
+
+contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+for contour in contours:
+    if cv2.contourArea(contour) < min_area:
+        continue
+    rect = cv2.minAreaRect(contour)  # ((cx, cy), (w, h), angle)
+    box = cv2.boxPoints(rect).astype(int)
+    cv2.drawContours(annotated2, [box], 0, (0, 255, 0), 3)
+
+cv2.imwrite('exercises/my_solutions/ex1_7/annotated2.png', annotated2)
+
