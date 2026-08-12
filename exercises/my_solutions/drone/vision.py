@@ -99,7 +99,12 @@ def do_vision(image, path, index, gps_locations):
         M = cv2.moments(contour)
         hu_moments = cv2.HuMoments(M)
         aspect_ratio = rect[1][0] / rect[1][1] if rect[1][1] != 0 else float('inf')
-        print(f"{"Rhino" if aspect_ratio < 1 else "Folded Zebra" if aspect_ratio < 2.5 else "Elephant"} Seen:")
+        animal_type = "Elephant" if aspect_ratio < 1 else "Folded Zebra" if aspect_ratio < 2.5 else "Rhino"
+
+        label_pos = (int(box[:, 0].min()), max(int(box[:, 1].min()) - 10, 0))
+        cv2.putText(annotated2, animal_type, label_pos, cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 6)
+
+        print(f"{animal_type} Seen:")
         print(f"- In img_{index}")
         if index in gps_locations:
             lat, lon, alt, heading = gps_locations[index]
