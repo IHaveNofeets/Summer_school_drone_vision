@@ -4,7 +4,18 @@ import glob
 import os
 import re
 
-def do_vision(image, path, index):
+def load_gps_locations(path):
+    locations = {}
+    with open(path + 'gps_locations.log') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            idx, lat, lon, alt, heading = line.split(',')
+            locations[int(idx)] = (float(lat), float(lon), float(alt), float(heading))
+    return locations
+
+def do_vision(image, path, index, gps_locations):
     # rotate image to be upright      
     image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
     cv2.imwrite(path + 'rot/img_' + str(index) + '.jpg', image)
@@ -87,21 +98,22 @@ def do_vision(image, path, index):
 
         M = cv2.moments(contour)
         hu_moments = cv2.HuMoments(M)
-        print(f"Shape {i}")
-        print(f" -Area={cv2.contourArea(contour)}")
-        print(f" -Perimeter={cv2.arcLength(contour, True)}")
-        print(f" -Centroid=({M['m10']/M['m00']:.1f},{M['m01']/M['m00']:.1f})")
-        print(f" -Bounding box=({rect[0][0]:.1f},{rect[0][1]:.1f},{rect[1][0]:.1f},{rect[1][1]:.1f}) angle={rect[2]:.1f}")
-        print(f" -Moments: {M}")
-        print(f" -Hu Moments: {hu_moments.flatten()}")
+        aspect_ratio = rect[1][0] / rect[1][1] if rect[1][1] != 0 else float('inf')
+        print(f"{"Rhino" if aspect_ratio < 1 else "Folded Zebra" if aspect_ratio < 2.5 else "Elephant"} Seen:")
+        print(f"- In img_{index}")
+        if index in gps_locations:
+            lat, lon, alt, heading = gps_locations[index]
+            print(f" -Location: lat={lat}, lon={lon}, alt={alt}, heading={heading}")
+        
         i += 1
 
     #cv2.imwrite('exercises/my_solutions/ex1_7/annotated2.png', annotated2)
     cv2.imwrite(path + '/annotated/img_' + str(index) + '.jpg', annotated2)
 
 base_path = 'exercises/my_solutions/drone/'
+gps_locations = load_gps_locations(base_path)
 
 for img_path in sorted(glob.glob(base_path + 'raw/img_*.jpg')):
     index = int(re.search(r'img_(\d+)\.jpg$', os.path.basename(img_path)).group(1))
     image = cv2.imread(img_path)
-    do_vision(image, base_path, index)
+    do_vision(image, base_path, index, gps_locations)
