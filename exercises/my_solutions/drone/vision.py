@@ -15,15 +15,30 @@ def load_gps_locations(path):
             locations[int(idx)] = (float(lat), float(lon), float(alt), float(heading))
     return locations
 
+def make_combined(steps, path, index, target_height=500):
+    resized = []
+    for label, img in steps:
+        if img.ndim == 2:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+        h, w = img.shape[:2]
+        scale = target_height / h
+        img = cv2.resize(img, (int(w * scale), target_height))
+        cv2.putText(img, label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+        resized.append(img)
+    combined = cv2.hconcat(resized)
+    cv2.imwrite(path + 'combined/img_' + str(index) + '.jpg', combined)
+
 def do_vision(image, path, index, gps_locations):
     # rotate image to be upright      
     image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
     cv2.imwrite(path + 'rot/img_' + str(index) + '.jpg', image)
+    rot_step = image.copy()
     # print(image.shape)
 
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    
+
     cv2.imwrite(path + 'grey/img_' + str(index) + '.jpg', lab[:,:,2])
+    grey_step = lab[:,:,2].copy()
     blurred = cv2.GaussianBlur(lab[:,:,2], (9, 9), 0)
     # otsu_value, mask = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     value, mask = cv2.threshold(blurred, 120, 255, cv2.THRESH_BINARY)
@@ -32,7 +47,8 @@ def do_vision(image, path, index, gps_locations):
     # print(f"Otsu threshold: {otsu_value}")
     #cv2.imshow("test",mask)
     cv2.imwrite(path + 'thresholding/img_' + str(index) + '.jpg', mask)
-    
+    thresholding_step = mask.copy()
+
 
     delta = 5
     mask = cv2.dilate(mask, None, iterations=delta)
@@ -66,6 +82,7 @@ def do_vision(image, path, index, gps_locations):
     mask = cv2.erode(mask, None, iterations=delta*2)
     mask = cv2.dilate(mask, None, iterations=delta)
     cv2.imwrite(path + 'masks/img_' + str(index) + '.jpg', mask)
+    mask_step = mask.copy()
 
     # Connected components analysis
     n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8, ltype=cv2.CV_32S)
@@ -114,6 +131,14 @@ def do_vision(image, path, index, gps_locations):
 
     #cv2.imwrite('exercises/my_solutions/ex1_7/annotated2.png', annotated2)
     cv2.imwrite(path + '/annotated/img_' + str(index) + '.jpg', annotated2)
+
+    make_combined([
+        ("Camera", rot_step),
+        ("Grey (LAB-b)", grey_step),
+        ("Threshold", thresholding_step),
+        ("Mask", mask_step),
+        ("Annotated", annotated2),
+    ], path, index)
 
 base_path = 'exercises/my_solutions/drone/'
 gps_locations = load_gps_locations(base_path)
