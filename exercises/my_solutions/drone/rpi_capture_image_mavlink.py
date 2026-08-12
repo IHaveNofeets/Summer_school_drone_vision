@@ -12,7 +12,7 @@ rpi_capture_image_mavlink.py: Triggering image captures based on RC MAVLink mess
 RC_CAPTURE = 6 # RX Channel 7
 
 # Exposure min/max supported for Cam v2: 75, 11766829
-CAM_EXPOSURE_TIME = 20_000 #in micro seconds, 1000 microsecond => 1ms
+CAM_EXPOSURE_TIME = 1_000 #in micro seconds, 1000 microsecond => 1ms
 CAM_GAIN = 1.0 # analogue gain
 CAM_AE = False # Auto Exposure setting. If this is enabled the manual exposure time and gain will be overridden 
 CAM_AWB = True # Auto white balance, in case you do not want to let it auto adjust the white balance
@@ -155,7 +155,9 @@ class DroneControl:
                 count+=1
                 self.folder_loc = '/home/pi/images/capture_{}/'.format(count)
             os.mkdir(self.folder_loc)
-            os.mkdir(self.folder_loc + "raw/")
+
+        os.mkdir(self.folder_loc + "raw/")
+        if DO_VISION:
             os.mkdir(self.folder_loc + "rot/")
             os.mkdir(self.folder_loc + "masks/")
             os.mkdir(self.folder_loc + "annotated/")
@@ -249,7 +251,7 @@ class DroneControl:
                 if self.rc_channels[RC_CAPTURE] > 1500 or ("AUTO" in self.mode and self.armed):
                     self.capture()
                     if not DO_VISION:
-                        time.sleep(0.25)
+                        time.sleep(0.1)
                 elif self.debounce:
                     self.debounce = False
 

@@ -11,8 +11,17 @@ def do_vision(image, path, index):
     # print(image.shape)
 
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    otsu_value, mask = cv2.threshold(lab[:,:,1], 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    
+    cv2.imwrite(path + 'grey/img_' + str(index) + '.jpg', lab[:,:,2])
+    blurred = cv2.GaussianBlur(lab[:,:,2], (9, 9), 0)
+    # otsu_value, mask = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    value, mask = cv2.threshold(blurred, 120, 255, cv2.THRESH_BINARY)
+    mask = cv2.bitwise_not(mask)
+
     # print(f"Otsu threshold: {otsu_value}")
+    #cv2.imshow("test",mask)
+    cv2.imwrite(path + 'thresholding/img_' + str(index) + '.jpg', mask)
+    
 
     delta = 5
     mask = cv2.dilate(mask, None, iterations=delta)
@@ -50,17 +59,19 @@ def do_vision(image, path, index):
     # Connected components analysis
     n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(mask, connectivity=8, ltype=cv2.CV_32S)
 
-    min_area = 500  # drop tiny noise blobs
+    min_area = 10000  # drop tiny noise blobs
+    max_area = 200000
+    max_perimeter = 2500  # drop huge blobs (like the whole image)
     annotated = image.copy()
 
-    for label in range(1, n_labels):  # label 0 is always the background, skip it
-        x, y, w, h, area = stats[label] # the stats layout is (x, y, width, height, area)
-        if area < min_area:
-            continue
-        cx, cy = centroids[label]
+    #for label in range(1, n_labels):  # label 0 is always the background, skip it
+        #x, y, w, h, area = stats[label] # the stats layout is (x, y, width, height, area)
+        #if area < min_area or area > max_area:
+          #  continue
+        # cx, cy = centroids[label]
         # print(f"Object {label}: bbox=({x},{y},{w},{h}) area={area} centroid=({cx:.1f},{cy:.1f})")
-        cv2.rectangle(annotated, (x, y), (x + w, y + h), (0, 0, 255), 3)
-        cv2.circle(annotated, (int(cx), int(cy)), 8, (0, 0, 255), -1)
+        # cv2.rectangle(annotated, (x, y), (x + w, y + h), (0, 0, 255), 3)
+        # cv2.circle(annotated, (int(cx), int(cy)), 8, (0, 0, 255), -1)
 
     annotated2 = annotated.copy()
 
@@ -68,7 +79,7 @@ def do_vision(image, path, index):
 
     i = 0
     for contour in contours:
-        if cv2.contourArea(contour) < min_area:
+        if cv2.contourArea(contour) < min_area or cv2.contourArea(contour) > max_area or cv2.arcLength(contour, True) > max_perimeter:
             continue
         rect = cv2.minAreaRect(contour)  # ((cx, cy), (w, h), angle)
         box = cv2.boxPoints(rect).astype(int)
@@ -76,14 +87,19 @@ def do_vision(image, path, index):
 
         M = cv2.moments(contour)
         hu_moments = cv2.HuMoments(M)
-        print(f"Contour {i}: area={cv2.contourArea(contour)}")
-        print(f"Hu Moments for contour {i}: {hu_moments.flatten()}")
+        print(f"Shape {i}")
+        print(f" -Area={cv2.contourArea(contour)}")
+        print(f" -Perimeter={cv2.arcLength(contour, True)}")
+        print(f" -Centroid=({M['m10']/M['m00']:.1f},{M['m01']/M['m00']:.1f})")
+        print(f" -Bounding box=({rect[0][0]:.1f},{rect[0][1]:.1f},{rect[1][0]:.1f},{rect[1][1]:.1f}) angle={rect[2]:.1f}")
+        print(f" -Moments: {M}")
+        print(f" -Hu Moments: {hu_moments.flatten()}")
         i += 1
 
     #cv2.imwrite('exercises/my_solutions/ex1_7/annotated2.png', annotated2)
     cv2.imwrite(path + '/annotated/img_' + str(index) + '.jpg', annotated2)
 
-base_path = 'exercises/my_solutions/ex1_7/'
+base_path = 'exercises/my_solutions/drone/'
 
 for img_path in sorted(glob.glob(base_path + 'raw/img_*.jpg')):
     index = int(re.search(r'img_(\d+)\.jpg$', os.path.basename(img_path)).group(1))
