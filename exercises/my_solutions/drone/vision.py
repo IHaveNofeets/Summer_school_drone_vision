@@ -3,6 +3,30 @@ import numpy as np
 import glob
 import os
 import re
+import math
+
+EARTH_RADIUS_M = 6378137.0
+HORIZONTAL_FOV_DEG = 62.2  # along the camera's native sensor width
+VERTICAL_FOV_DEG = 48.8    # along the camera's native sensor height
+FIELD_ELEVATION_M = 14.0   # the field sits ~14m above sea level, but alt in the gps log is above sea level
+
+def estimate_animal_latlon(cx, cy, img_w, img_h, drone_lat, drone_lon, alt_msl_m, heading_deg):
+    alt_agl_m = alt_msl_m - FIELD_ELEVATION_M  # height above the field, not above sea level
+
+    # the image was rotated 90 deg CCW to be upright, so in this (rotated) frame the
+    # image width now spans the camera's native VERTICAL fov, and the image height
+    # spans the native HORIZONTAL fov
+    right_m = alt_agl_m * ((cx - img_w / 2) / (img_w / 2)) * math.tan(math.radians(VERTICAL_FOV_DEG / 2))
+    forward_m = alt_agl_m * ((img_h / 2 - cy) / (img_h / 2)) * math.tan(math.radians(HORIZONTAL_FOV_DEG / 2))
+
+    heading_rad = math.radians(heading_deg)
+    north_m = forward_m * math.cos(heading_rad) - right_m * math.sin(heading_rad)
+    east_m = forward_m * math.sin(heading_rad) + right_m * math.cos(heading_rad)
+
+    dlat = (north_m / EARTH_RADIUS_M) * (180 / math.pi)
+    dlon = (east_m / (EARTH_RADIUS_M * math.cos(math.radians(drone_lat)))) * (180 / math.pi)
+
+    return drone_lat + dlat, drone_lon + dlon
 
 def load_gps_locations(path):
     locations = {}
@@ -105,10 +129,16 @@ def do_vision(image, path, index, gps_locations):
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    img_h, img_w = image.shape[:2]
+
+    detections = []
     i = 0
     for contour in contours:
         if cv2.contourArea(contour) < min_area or cv2.contourArea(contour) > max_area or cv2.arcLength(contour, True) > max_perimeter:
             continue
+        bx, by, bw, bh = cv2.boundingRect(contour)
+        if bx <= 0 or by <= 0 or bx + bw >= img_w - 1 or by + bh >= img_h - 1:
+            continue  # skip animals cut off by the image border
         rect = cv2.minAreaRect(contour)  # ((cx, cy), (w, h), angle)
         box = cv2.boxPoints(rect).astype(int)
         cv2.drawContours(annotated2, [box], 0, (0, 255, 0), 3)
@@ -121,12 +151,17 @@ def do_vision(image, path, index, gps_locations):
         label_pos = (int(box[:, 0].min()), max(int(box[:, 1].min()) - 10, 0))
         cv2.putText(annotated2, animal_type, label_pos, cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 6)
 
-        print(f"{animal_type} Seen:")
-        print(f"- In img_{index}")
-        if index in gps_locations:
-            lat, lon, alt, heading = gps_locations[index]
-            print(f" -Location: lat={lat}, lon={lon}, alt={alt}, heading={heading}")
-        
+        drone_lat, drone_lon, alt, heading = gps_locations[index]
+        cx, cy = rect[0]
+        animal_lat, animal_lon = estimate_animal_latlon(cx, cy, img_w, img_h, drone_lat, drone_lon, alt, heading)
+        print(f"{animal_type} seen at location: lat={animal_lat:.7f}, lon={animal_lon:.7f}, alt={alt}, heading={heading}")
+        detections.append({
+            "type": animal_type,
+            "lat": animal_lat,
+            "lon": animal_lon,
+            "index": index,
+        })
+
         i += 1
 
     #cv2.imwrite('exercises/my_solutions/ex1_7/annotated2.png', annotated2)
@@ -140,10 +175,54 @@ def do_vision(image, path, index, gps_locations):
         ("Annotated", annotated2),
     ], path, index)
 
+    return detections
+
+def write_map(detections, gps_locations, path):
+    flight_path = [gps_locations[idx][:2] for idx in sorted(gps_locations)]
+    colors = {"Rhino": "#e6194B", "Folded Zebra": "#3cb44b", "Elephant": "#4363d8"}
+
+    markers_js = "\n".join(
+        f'L.circleMarker([{d["lat"]}, {d["lon"]}], {{radius: 8, color: "{colors.get(d["type"], "#000")}", '
+        f'fillOpacity: 0.8}}).addTo(map).bindPopup("{d["type"]} (img_{d["index"]})");'
+        for d in detections
+    )
+    path_js = ", ".join(f"[{lat}, {lon}]" for lat, lon in flight_path)
+
+    html = f"""<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>#map {{ height: 100vh; margin: 0; }} body {{ margin: 0; }}</style>
+</head>
+<body>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var map = L.map('map');
+L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+    attribution: '&copy; OpenStreetMap contributors'
+}}).addTo(map);
+
+var flightPath = L.polyline([{path_js}], {{color: 'grey', dashArray: '4 6'}}).addTo(map);
+map.fitBounds(flightPath.getBounds());
+map.setZoom(map.getZoom() + 2);
+
+{markers_js}
+</script>
+</body>
+</html>
+"""
+    with open(path + 'map.html', 'w') as f:
+        f.write(html)
+
 base_path = 'exercises/my_solutions/drone/'
 gps_locations = load_gps_locations(base_path)
+all_detections = []
 
 for img_path in sorted(glob.glob(base_path + 'raw/img_*.jpg')):
     index = int(re.search(r'img_(\d+)\.jpg$', os.path.basename(img_path)).group(1))
     image = cv2.imread(img_path)
-    do_vision(image, base_path, index, gps_locations)
+    all_detections.extend(do_vision(image, base_path, index, gps_locations))
+
+write_map(all_detections, gps_locations, base_path)

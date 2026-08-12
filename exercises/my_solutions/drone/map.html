@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>#map { height: 100vh; margin: 0; } body { margin: 0; }</style>
+</head>
+<body>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+var map = L.map('map');
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+var flightPath = L.polyline([[55.4756222, 10.3284219], [55.4756217, 10.3284255], [55.4756218, 10.3284259], [55.4756221, 10.3284234], [55.4756451, 10.328361], [55.4757005, 10.3282967], [55.4757718, 10.3282145], [55.47583, 10.3281497], [55.4758915, 10.3281308], [55.4759766, 10.3281322], [55.4760557, 10.3281343], [55.4761275, 10.3281386], [55.4761614, 10.328142], [55.4761686, 10.3281295], [55.4761597, 10.3281065], [55.4761524, 10.3280902], [55.4761457, 10.3280662], [55.4761363, 10.3280427], [55.4761264, 10.3280156], [55.4761174, 10.3279891], [55.4761089, 10.327963], [55.4761017, 10.3279394], [55.4760936, 10.3279177], [55.4760867, 10.3278929], [55.4760787, 10.3278658], [55.4760689, 10.3278381], [55.4760611, 10.3278131], [55.4760518, 10.3277866], [55.4760426, 10.3277572], [55.4760348, 10.3277347], [55.4760266, 10.3277097], [55.4760188, 10.3276852], [55.4760109, 10.3276626], [55.4760027, 10.3276353], [55.4759951, 10.3276119], [55.4759883, 10.3275888], [55.4759783, 10.3275812], [55.4759588, 10.3276418], [55.475925, 10.3277354], [55.4758949, 10.3278204], [55.4758712, 10.3279082], [55.4758439, 10.3279871], [55.475819, 10.3280626], [55.4757606, 10.3281439], [55.4756933, 10.3282316], [55.475653, 10.3282853], [55.4756378, 10.3283035], [55.4756354, 10.3283086], [55.4756344, 10.3283105], [55.4756355, 10.3283078], [55.4756352, 10.328306]], {color: 'grey', dashArray: '4 6'}).addTo(map);
+map.fitBounds(flightPath.getBounds());
+map.setZoom(map.getZoom() + 2);
+
+L.circleMarker([55.47611511057135, 10.328028167982465], {radius: 8, color: "#4363d8", fillOpacity: 0.8}).addTo(map).bindPopup("Elephant (img_15)");
+L.circleMarker([55.4761139999284, 10.328039081209543], {radius: 8, color: "#4363d8", fillOpacity: 0.8}).addTo(map).bindPopup("Elephant (img_16)");
+L.circleMarker([55.47611497048255, 10.32803357391174], {radius: 8, color: "#4363d8", fillOpacity: 0.8}).addTo(map).bindPopup("Elephant (img_17)");
+L.circleMarker([55.47608150997692, 10.327919717630042], {radius: 8, color: "#e6194B", fillOpacity: 0.8}).addTo(map).bindPopup("Rhino (img_17)");
+L.circleMarker([55.47611737222227, 10.328024647302103], {radius: 8, color: "#4363d8", fillOpacity: 0.8}).addTo(map).bindPopup("Elephant (img_18)");
+L.circleMarker([55.47608365396208, 10.327912328920647], {radius: 8, color: "#e6194B", fillOpacity: 0.8}).addTo(map).bindPopup("Rhino (img_18)");
+L.circleMarker([55.47611660813297, 10.328022873223809], {radius: 8, color: "#4363d8", fillOpacity: 0.8}).addTo(map).bindPopup("Elephant (img_19)");
+L.circleMarker([55.476084994119866, 10.327911272443538], {radius: 8, color: "#e6194B", fillOpacity: 0.8}).addTo(map).bindPopup("Rhino (img_19)");
+L.circleMarker([55.4761162095128, 10.328016814308295], {radius: 8, color: "#4363d8", fillOpacity: 0.8}).addTo(map).bindPopup("Elephant (img_20)");
+L.circleMarker([55.47608526565241, 10.327907331821395], {radius: 8, color: "#e6194B", fillOpacity: 0.8}).addTo(map).bindPopup("Rhino (img_20)");
+L.circleMarker([55.4761403257904, 10.32796375635995], {radius: 8, color: "#4363d8", fillOpacity: 0.8}).addTo(map).bindPopup("Elephant (img_21)");
+L.circleMarker([55.47610004003467, 10.327827110952445], {radius: 8, color: "#e6194B", fillOpacity: 0.8}).addTo(map).bindPopup("Rhino (img_21)");
+L.circleMarker([55.47608496584135, 10.32790389908205], {radius: 8, color: "#e6194B", fillOpacity: 0.8}).addTo(map).bindPopup("Rhino (img_26)");
+L.circleMarker([55.475997779948216, 10.327687932272186], {radius: 8, color: "#3cb44b", fillOpacity: 0.8}).addTo(map).bindPopup("Folded Zebra (img_26)");
+L.circleMarker([55.47600795448168, 10.327678367936487], {radius: 8, color: "#3cb44b", fillOpacity: 0.8}).addTo(map).bindPopup("Folded Zebra (img_32)");
+L.circleMarker([55.47602181510232, 10.32771952338695], {radius: 8, color: "#3cb44b", fillOpacity: 0.8}).addTo(map).bindPopup("Folded Zebra (img_36)");
+</script>
+</body>
+</html>
