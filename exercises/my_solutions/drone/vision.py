@@ -148,13 +148,18 @@ def do_vision(image, path, index, gps_locations):
         aspect_ratio = rect[1][0] / rect[1][1] if rect[1][1] != 0 else float('inf')
         animal_type = "Elephant" if aspect_ratio < 1 else "Folded Zebra" if aspect_ratio < 2.5 else "Rhino"
 
-        label_pos = (int(box[:, 0].min()), max(int(box[:, 1].min()) - 10, 0))
-        cv2.putText(annotated2, animal_type, label_pos, cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 6)
-
         drone_lat, drone_lon, alt, heading = gps_locations[index]
         cx, cy = rect[0]
         animal_lat, animal_lon = estimate_animal_latlon(cx, cy, img_w, img_h, drone_lat, drone_lon, alt, heading)
         print(f"{animal_type} seen at location: lat={animal_lat:.7f}, lon={animal_lon:.7f}, alt={alt}, heading={heading}")
+
+        latlon_text = f"{animal_lat:.6f}, {animal_lon:.6f}"
+        latlon_width = cv2.getTextSize(latlon_text, cv2.FONT_HERSHEY_SIMPLEX, 3, 6)[0][0]
+        label_x = min(int(box[:, 0].min()), img_w - latlon_width - 10)
+        label_pos = (label_x, max(int(box[:, 1].min()) - 100, 0))
+        cv2.putText(annotated2, animal_type, label_pos, cv2.FONT_HERSHEY_SIMPLEX, 4, (0, 255, 0), 8)
+        latlon_pos = (label_pos[0], label_pos[1] + 90)
+        cv2.putText(annotated2, latlon_text, latlon_pos, cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 255, 0), 6)
         detections.append({
             "type": animal_type,
             "lat": animal_lat,
